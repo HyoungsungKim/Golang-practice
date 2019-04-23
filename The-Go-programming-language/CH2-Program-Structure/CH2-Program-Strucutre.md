@@ -293,3 +293,81 @@ right-hand side (the value) have the same type.
 ```go
 variable = value		//legal!
 ```
+
+
+
+## 2.5 Type Declarations
+
+The type of a variable or expression defines the characteristics of the values it may take on
+
+- such as their size
+- how they are represented internally 
+- the intrinsic operations that can be performed on them
+- The methods associated with them.
+
+A type declaration defines a new named type that has the same underlying type as an existing type. The names type provides a way to separate different and perhaps incompatible uses of the underlying type so that they cannot be mixed unintentionally.
+
+```go
+type name underlying-type
+```
+
+Type declarations most often appear at package level, where the named type is visible throughout the package. and if the name is exported, it is accessible from other package as well.
+
+```go
+package tempconv
+import "fmt"
+
+type Celsius float64
+type Fahrenheit float64
+//Celsius and Fahrenheit is float64 but their type is different because of Type Declarations
+const (
+    AbsoluteZeorC	Celsius = -273.15
+    FreezingC		Celsius = 0
+    BoilingC	 	Celsius = 100
+)
+
+func CToF(c Celsius) Fahreheit { return Fahrenheit(c*9/5 + 32)}
+func FToC(f Fahrenheit) Celsius{ return Celsius((f - 32) * 5/9)}
+```
+
+> ***Similar with typedef in C/C++***
+
+***For every type T, there is a corresponding conversion operation T(x) that converts the value x to type T.*** A conversion from one type to another is ***allowed if both have the same underlying type, or if both are unnamed pointer types that point to variables of the same underlying type***
+
+> underlying type of Celsius and Fahrenheit is float64 -> same!
+
+-> These conversions change the type but not the representation of the value. If x is assignable to T, a ***conversion is permitted but is usually redundant***
+
+- Conversions are also allowed between numeric types and between string and some slice types.
+
+- The underlying type of a named type determines its structures and representation
+
+  -> The set of intrinsic operations it supports
+
+> Celsius + Celsius -> result is Celsius too
+>
+> Celsius + Fahrenheit -> compile error:Type mismatching
+
+```go
+var c Celcius
+var f Fahrenheit
+fmt.Println(c == Celcius(f)) //true!
+```
+
+```go
+func (c Celsius) String() string { return fmt.Sprintf("%g C", c)}                       // String() : function name
+// There is (c Celsius) in front of function name
+//-> return string value and in string there is Celsius c
+
+c := FToC(212.0)
+fmt.Println(c.String()) // "100°C"
+fmt.Printf("%v\n", c) // "100°C"; no need to call String explicitly
+fmt.Printf("%s\n", c) // "100°C"
+fmt.Println(c) // "100°C"
+fmt.Printf("%g\n", c) // "100"; does not call String
+fmt.Println(float64(c)) // "100"; does not call String
+
+//for more information about print verb
+//https://golang.org/pkg/fmt/
+```
+
