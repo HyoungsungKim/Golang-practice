@@ -362,9 +362,11 @@ func (c Celsius) String() string { return fmt.Sprintf("%g C", c)}               
 c := FToC(212.0)
 fmt.Println(c.String()) // "100°C"
 fmt.Printf("%v\n", c) // "100°C"; no need to call String explicitly
+//%v: for all format
 fmt.Printf("%s\n", c) // "100°C"
 fmt.Println(c) // "100°C"
 fmt.Printf("%g\n", c) // "100"; does not call String
+//%g: for float format
 fmt.Println(float64(c)) // "100"; does not call String
 
 //for more information about print verb
