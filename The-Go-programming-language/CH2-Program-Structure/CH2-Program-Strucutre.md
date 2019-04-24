@@ -373,3 +373,87 @@ fmt.Println(float64(c)) // "100"; does not call String
 //https://golang.org/pkg/fmt/
 ```
 
+## 2.6 Package and Files
+
+Package in Go serve the same purpose as library or modules in other language, supporting modularity, encapsulation, separate compilation, and reuse. 
+
+```go
+// Package tempconv performs Celsius and Fahrenheit conversions.
+package tempconv
+
+import "fmt"
+
+type Celsius float64
+type Fahrenheit float64
+const(
+	AbsoluteZeroC	Celsius = -273.15
+    FreezingC	 	Celsius = 0
+    BoilingC		Celsius = 100
+)
+func(c Celsius) Sring() string { return fmt.Sprintg("%g°C", c) }
+func(f Fahrenheit) String() string { return fmt.Springf("%g°F", f)}
+
+```
+
+```go
+//conv.go
+package tempconv
+func CToF(c Celsius) Fahrenheit{ return Fahrenheit(c * 9/5 + 32) }
+func FToC(f Fahrenheit) Celsius { return Celsius((f - 32) * 5/9)}
+```
+
+## 2.6.1 Imports
+
+Within a Go program, every package is identified by a unique string called its import path. In addition to its import path, each package has a package name, which is the short(and not necessarily unique) name that appears in tis package declaration.
+
+By convention, a package’s name matches the last segment of its import path, making it easy to predict that ***the package name of gopl.io/ch2/tempconv is tempconv.***
+
+To use gopl.io/ch2/tempconv, we must import it
+
+```go
+gopl.io/ch2/cf
+// Cf converts its numberic argument to Celsius and Fahrenheit.
+package main
+
+import(
+    "fmt"
+    "os"
+    "strconv"
+    "gopl.io/ch2/tempconv"
+)
+func main() {
+    for _, arg := range os.Args[1:] {
+        t, err := strconv.parseFloat(arg, 64)
+        if err != nil {
+            //(err == nil) -> It means no error
+            fmt.Fprintf(os.Stderr, "cf: %v\n", err)
+            os.Exit(1)
+        }
+        f := tempconv.Fahrenheit(t)
+        c := tempconv.Celsius(t)
+        fmt.Printf(%s = %s, %s = %s\n",
+                   f, tempconv.FToC(f), c, tempconv.CToF(c))
+    }
+}
+```
+
+### 2.6.2 Package Initialization
+
+Package initialization begins by initializing package-level variables ***in the order in which they are declared, except that dependencies are resolved first.***
+
+If the package has multiple .go files, ***they are initialized in the order in which the files are given to the compiler;*** the go tool sorts .go files by name before invoking the compiler. 
+
+```go
+func init(){/*...*/}
+```
+
+Such init functions can’t be called or referenced, but otherwise they are normal functions. Within each file, init functions are automatically executed when the program starts, in the order in which they are declared.
+
+## 2.7 Scope
+
+Don’t confuse scope with life time. The scope of a declarat ion is a reg ion of the program text; it is a compile-time property. 
+
+- ***The lifetime of a variable is the range of time during execution*** when the variable can be refer red to by other parts of the program
+- Scope is a run-time property.
+
+A syntactic block is a sequence of statements enclosed in braces like those that surround the body of a function or loop. A name declared inside a syntactic block is not visible outside that block. ***The block encloses its declarations and determines their scope. We can generalize this notion of blocks to include other groupings of declarations*** that are not explicitly surrounded by braces in the source code; we’ll call them all lexical blocks. ***A declaration’s lexical block determines its scope, which may be large or small.*** 
