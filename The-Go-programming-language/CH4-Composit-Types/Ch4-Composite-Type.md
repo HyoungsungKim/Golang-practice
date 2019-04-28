@@ -144,6 +144,10 @@ The built-in function *make* creates a slice of a specified element type, length
 ```go
 make([]T, len)
 make([]T, len, cap) // same as make([]T, cap)[:len]
+
+//For example, make([]int, 0, 10) allocates an underlying array
+//of size 10 and returns a slice of length 0 and capacity 10 that is
+//backed by this underlying array.
 ```
 
 ***It creates an unnamed array variable*** and returns a slice of it; the array is accessible only through the returned slice. 
@@ -233,10 +237,168 @@ The hash table is one of the most ingenious and versatile of all data structures
 >
 > versatile : 다재다능한
 
-In Go, a map is a reference to a hash table, and a map type is written map[K]V, where K and V
-are the types of its keys and values.
+***In Go, a map is a reference to a hash table***, and a map type is written map[K]V,
 
-- All of the keys in a given map are of the same type,
-- All of the values are of the same type
-- But the keys need not be of the same type as the values.
+- K keys
+- V Values
 
+- All of the *keys in a given map are of the same type,*
+- All of the *values are of the same type*
+- But the *keys need not be of the same type as the values.*
+
+The key type K must be comparable using ==, so that the map can test whether a given key is equal to one already within it. ***Though floating-point numbers are comparable, it’s a bad idea to compare floats for equality*** and, as we mentioned in Chapter 3, especially bad if NaN is a possible value.
+
+```go
+ages := make(map[string]int)
+//Other way
+ages := mpa[strng]int{
+    "alice":	31,
+    "charlie":	34,
+}
+//It is equivalent to
+ages := make(map[string]int)
+ages["alice"] = 31
+ages["charlie"] = 34
+fmt.Println(ages["alice"])	// 32
+delete(ages, "alice")	//remove element ages["alice"]
+ages["Bob"]	// key is 0
+//It is possible
+ages["Bob"] += 1
+ages["Bob"]++
+```
+
+A map element is not a variable, and we cannot take its address:
+
+```go
+_= &ages["Bob"]	//Compile error: cannot take address of map element
+```
+
+To enumerate all the key/value pairs in the map, we use a range-based for loop similar to those we saw for slices.
+
+```go
+for name, age := range ages{
+    fmt.Printf(%s\t%d\n", name, age)
+}
+```
+
+The order of map iteration is unspecified, and different implementations might use a different hash function, leading to a different ordering. In practice, the order is random, varying from one execution to the next.
+
+To enumerate the key/value pairs in order, we must sort the keys explicitly, for instance, using the Strings function from the sort package if the keys are strings. This is a common pattern:
+
+```go
+import "sort"
+
+var name []string
+for name := range ages{
+    names = append(names, name)
+}
+sotr.String(names)
+for _, name := range names {
+    fmt.Printf("%s\t%d\n", name, ages[name])
+}
+```
+
+Since we know the final size of names from the outset, it is more efficient to allocate an array of the required size up front. ***The statement below creates a slice that is initially empty but has sufficient capacity to hold all the keys of the ages map:*** 
+
+```go
+names := make([]string, 0, len(ages))
+//make(type, size, capacity)
+```
+
+***In the first range loop above, we require only the keys of the ages map, so we omit the second loop variable.*** In the second loop, we require only the elements of the names slice, so we use the blank identifier _ to ignore the first variable, the index.
+
+The zero value for a map type is nil, that is, a reference to no hash table at all.
+
+```go
+var ages map[string]int
+fmt.Println(ages == nil) // "true"
+fmt.Println(len(ages) == 0) // "true"
+```
+
+Most operations on maps, including lookup, *delete*, *len*, and *range* loops, are safe to perform on a nil map reference, since it behaves like an empty map. ***But storing to a nil map causes a panic:***
+
+```go
+ages["carol"] = 21	//panic: assignment to entry in nil map
+```
+
+***You must allocate the map before you can store into it.***
+
+***Accessing a map element by subscripting always yields a value.*** If the key is present in the map, you get the corresponding value; ***if not, you get the zero value for the element type, as we saw with ages["Bob"].***
+
+> Can call unpresented value,
+>
+> but cannot store value 
+
+For many purposes that’s fine, ***but sometimes you need to know whether the element was really there or not.*** 
+
+```go
+age, ok := ages["Bob"]
+if !ok {/*"Bob" is not a key in this map; age == 0.*/}
+// You will often see these two statements combined, like this:
+if age, ok := ages["Bob"]; !ok{/*...*/}
+```
+
+Subscripting a map in this context yields two values; the second is a boolean that reports whether the element was present. ***The boolean variable is often called ok, especially if it is immediately used in an if condition.***
+
+***As with slices, maps cannot be compared to each other; the only legal comparison is with nil.*** 
+
+```go
+func equal(x, y map[string]int) bool{
+    if len(x) != len(y) {
+        return false
+    }
+    for k, xv := range x{
+        //How to use ok and operator ||
+        if yv, ok := y[k]; !ok || yv != xv {
+            return false
+        }
+    }
+    return true
+}
+
+// True if equal is written incorrectly.
+equal(map[string]int{"A": 0}, map[string]int{"B": 42})
+```
+
+***Go does not provide a set type, but since the keys of a map are distinct, a map can serve this purpose.***
+
+To illustrate, the program *dedup* reads a sequence of lines and ***prints only the first occurrence of each distinct line.*** The *dedup* program uses a map whose keys represent the set of lines that have already appeared to ensure that subsequent occurrences are not printed.
+
+```go
+func main() {
+    seen := make(map[string]bool)	// a set of string
+    input := bufio.NewScanner(os.Stdin)
+    for input.Scan() {
+        line := input.Text()
+        if !seen[line] {
+            seen[line] = true
+            fmt.Println(line)
+        }
+    }
+    if err := input.Err(); err != nil {
+        fmt.Fpeintf(os.Stderr, "dedup: %v\n", err)
+        os.Exit(1)
+    }
+}
+```
+
+Sometimes we need a map or set ***whose keys are slices***, but because a map’s keys must be comparable,
+this cannot be expressed directly. However it can be done in two steps.
+
+- First, we define a helper function k that maps each keys to a string, with the property that k(x) == k(y) if and only if we consider x and y equivalent.
+- Then we create a map whose keys are strings applying the helper function to each key before we access the map.
+
+The example below uses a map to record the number of times *Add* has been called with a given list of strings. ***It uses fmt.Sprintf to convert a slice of string into a single string*** that is a suitable map key, quoting each slice element with %q to record string boundaries faithfully:
+
+```go
+var m = make(map[string]int)
+func k(list []string) string {return fmt.Sprintf("%q", list)}
+func Add(list []string) {m[k(list)]++}
+func Count(list []string) int {return m[k(list)]}
+```
+
+The same approach can be used for any non-comparable key type, not just slices.
+
+
+
+97page 하는 중
