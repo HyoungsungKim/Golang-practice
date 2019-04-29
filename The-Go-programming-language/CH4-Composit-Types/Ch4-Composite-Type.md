@@ -397,8 +397,190 @@ func Add(list []string) {m[k(list)]++}
 func Count(list []string) int {return m[k(list)]}
 ```
 
-The same approach can be used for any non-comparable key type, not just slices.
+The same approach can be used for any non-comparable key type, not just slices. It is even useful for comparable key types when you want a definition of equality other than ==, such as case-insensitive comparisons for string.
 
 
 
-97page 하는 중
+Example of maps in action, a program that counts the occurrences of each distinct Unicode code point in its input.
+
+```go
+package main
+import(
+    "bufio"
+    "fmt"
+    "io"
+    "os"
+    "unicode"
+    "unicode/utf8"
+)
+
+func main() {
+    counts := make(map[rune]int)
+    var utflen[utf8.UTFMax + 1]int
+    invalid := 0
+    
+    in := bufio.newReader(os.Stdin)
+    for{
+        r, n, err := in.ReadRune()
+        if err == io.EOF {
+            break
+        }
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "charcount: %v\n", err)
+            os.Exit(1)
+        }
+        if r == unicode.ReplacementChar && n == 1{
+            invalid++
+            continue
+        }
+        continue[r]++
+        utflen[n]++
+    }
+    fmt.Printf("rune\tcount\n")
+    for c, n := range counts {
+        fmt.Printf("%q\t%d\n"c, n)
+    }
+    fmt.Print("\nlen\tcount\n")
+    for i, n := reange utflen{
+        if i > 0{
+            fmt.Printf("%d\t%d\n",i,n)
+        }
+    }
+    if invalid > 0{
+        fmt.Printf("\n%d invalid UTF-8 characters\n", invalid)
+    }
+}
+```
+
+>The *assignment operator* (`=`) is used to perform assignments (i.e. to assign or reassign values to already declared variables).
+>
+>The *short declaration operator* (`:=`), on the other hand, is used to perform short variable declarations, which are shorthand for regular variable declarations ***but without a specified type.***
+>
+>[Go Design pattern](https://www.godesignpatterns.com/2014/04/assignment-vs-short-variable-declaration.html)
+
+The value type of a map can itself be a composite type, such as a map or slice. In the following code, the key type of graph is string and the value type is map[string]bool, representing a set of strings. Conceptually, graph maps a string to a set of related strings, its successors in a directed graph
+
+```go
+// := 선언 , = 할당(선언은 안됨)
+var graph = make(map[string]map[string]bool)
+func addEdge(from, to string){
+    edge := graph[from]
+    if edges == nil {
+        edges = make(map[string]bool)
+        graph[from] = edges
+    }
+    edges[to] = true
+}
+func hasEdge(from, to string) bool{
+    return graph[from][to]
+}
+```
+
+
+
+> ```go
+> make(map[string]map[string]int)
+> ```
+>
+> It's obvious that strings, ints, and other basic types should be  available as map keys, but perhaps unexpected are struct keys. Struct  can be used to key data by multiple dimensions. For example, this map of  maps could be used to tally web page hits by country:   
+>
+> ```go
+> hits := make(map[string]map[string]int)
+> ```
+>
+> This is map of string to (map of `string` to `int`).  Each key of the outer map is the path to a web page with its own inner map. Each inner map key is a two-letter country code. This expression retrieves the number of times an Australian has loaded the documentation  page:   
+>
+> ```go
+> n := hits["/doc/"]["au"]
+> ```
+>
+> Unfortunately, this approach becomes unwieldy when adding data, as  for any given outer key you must check if the inner map exists, and  create it if needed:   
+>
+> ```c++
+> map<string, map<string, int>>
+> //이거랑 같나??
+> ```
+>
+> [go maps in action](https://blog.golang.org/go-maps-in-action)
+
+
+
+## 4.4 Structs
+
+A struct is an aggregate data type that groups together zero or more named values of arbitrary types as a single entity. Each value is called a field. 
+
+```go
+type Employee struct {
+    Id			int
+    Name 		int
+    Address		string
+    DoB			time.Time
+    Position	string
+    Salary		int
+    ManagerID	int
+}
+var dilbert Employee
+```
+
+The individual fields of dilbert are accessed using dot notation like dilbert.Name
+
+***The name of a struct field is exported if it begins with a capital letter;*** this is Go’s main access control mechanism. A struct type may contain a mixture of exported and unexported fields.
+
+> Only start with large capital things can be exported like ***Println***
+>
+> ***(like public in class, if it is lower letter, it is private)***
+
+A named struct type ***S*** can’t declare a field of the same type ***S***: an aggregate value cannot contain its elf.
+
+```go
+type tree struct{
+    value 		int
+    left, right *tree
+}
+func Sort(values []int){
+    var root *tree
+    for _, v := range values {
+        root = add(root, v)
+    }
+    appendValues(values[:0], root)
+}
+
+func appendValues(values []int, t *tree)[]int {
+    if t != nil {
+        values = appendValues(values, t.left)
+        values = append(values, t.value)
+        values = appendValues(values, t.right)
+    }
+    return values
+}
+
+func add(t *tree, value int) *tree{
+    if t== nil {
+        t = new(tree)
+        t.value = value
+        return t
+    }
+    if value < t.value {
+        t.left = add(t.right, value)
+    } else{
+        t.right = add(t.right, value)
+    }
+    return t
+}
+```
+
+The zero value for a struct is composed of the zero values of each of its fields. ***It is usually desirable that the zero value be a natural or sensible default.*** For example, in *bytes.Buffer*, the initial value of the struct is a ready-to-use empty buffer, and the zero value of *sync.Mutex*, which we’ll see in Chapter 9, is a ready-to-use unlocked *mutex*. Sometimes this sensible initial behavior happens for free, but sometimes the type designer has to work at it.
+
+The struct type with no fields is called the empty struct, written struct{}. it has size zero and carries no information but may be useful nonetheless. ***Some Go programmers use it instead of bool as the value type of a map that represents a set, to emphasize that only the keys are significant, but the space saving is marginal and the syntax more cumbersome, so we generally avoid it***
+
+Example
+
+```go
+seen := make(map([string]struct{}))
+//Not good!
+```
+
+
+
+### 4.4.1 Struct Literal
+
