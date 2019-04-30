@@ -2,9 +2,9 @@
 
 ## Section 1.3
 
-A map holds a set of key/value pairs and provides constant-t ime operations to store, retrieve,
-or test for an item in the set. The key may be of any typ e whose values can compared with ==,
-strings being the most common example; the value may be of any typ e at all. In this example,
+A map holds a set of key/value pairs and provides constant-time operations to store, retrieve,
+or test for an item in the set. The key may be of any type whose values can compared with ==,
+strings being the most common example; the value may be of any type at all. In this example,
 the keys are strings and the values are ints.
 
 The scanner reads from the program’s standard input. Each cal l to input. Scan() reads the next line and removes the newline character from the end; the result can be retrieved by calling input. Text(). The Scan function returns true if there is a line and false when there is no more input.
