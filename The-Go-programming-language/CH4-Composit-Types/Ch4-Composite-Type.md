@@ -584,3 +584,268 @@ seen := make(map([string]struct{}))
 
 ### 4.4.1 Struct Literal
 
+> Similar with typedef in c++
+
+A value of struct type can be written using a struct literal that specifies values for its fields. 
+
+```go
+type Point struct{X, Y int}
+p := Point{1, 2}
+```
+
+There are two forms of struct literal.
+
+- The first form, shown above, requires that a value be specified for every field, in the right order.
+- More often, the second form is used, in which a struct value is initialized by listing some or all
+  of the field names and their corresponding values.
+
+```go
+anim := gif.GIF{LoopCount: nframes}
+package p
+type T struct{ a, b int } // a and b are not exported
+package q
+import "p"
+var _ = p.T{a: 1, b: 2} // compile error: can't reference a, b
+var _ = p.T{1, 2} // compile error: can't reference a, b
+```
+
+
+
+### 4.4.2 Comparing Structs
+
+```go
+type Point struct{ X, Y int }
+p := Point{1, 2}
+q := Point{2, 1}
+fmt.Println(p.X == q.X && p.Y == q.Y) // "false"
+fmt.Println(p == q) // "false"
+```
+
+```go
+type Point struct{ X, Y int }
+A := &Point{1, 2}
+B := &Point{1, 2}
+fmt.Println(A == B)		//false
+fmt.Println(A.X == B.X)	//true
+```
+
+
+
+### 4.4.3Struce Embedding and Anoymous Fields
+
+In this section, we’ll see how Go’s unusual struct embedding mechanism
+
+```go
+type Circle struct {
+	X, Y, Radius int
+}
+type Wheel struct {
+	X, Y, Radius, Spokes int
+}
+
+type Point struct {
+	X, Y int
+}
+type Circle struct {
+    Center Point
+    Radius int
+}
+type Wheel struct {
+    Circle Circle
+    Spokes int
+}
+
+var w Wheel
+w.Circle.Center.X = 8
+w.Circle.Center.Y = 8
+w.Circle.Radius = 5
+w.Spokes = 20
+```
+
+Go lets us declare a field with a type but no name; such fields are called anonymous fields
+
+```go
+type Circle struct {
+    Point
+    Radius int
+}
+type Wheel struct {
+    Circle
+    Spokes int
+}
+
+var w Wheel
+w.X = 8 // equivalent to w.Circle.Point.X = 8
+w.Y = 8 // equivalent to w.Circle.Point.Y = 8
+w.Radius = 5 // equivalent to w.Circle.Radius = 5
+w.Spokes = 20
+```
+
+Thanks to embedding, ***we can refer to the names at the leaves of the implicit tree without giving the intervening names:***
+
+> intervening : (두 사건, 날짜, 사물 등의)사이에 오는
+
+Unfortunately, there’s no corresponding shorthand for the struct literal syntax, so neither of
+these will compile:
+
+```go
+w = Wheel{8, 8, 5, 20} // compile error: unknown fields
+w = Wheel{X: 8, Y: 8, Radius: 5, Spokes: 20} // compile error: unknown fields
+```
+
+The struct literal must follow the shape of the type declaration, so we must use one of the two forms below, which are equivalent to each other :
+
+```go
+w = Wheel{Circle{Point{8,8}, 5}, 20}
+w = Wheel{
+    Circle: Circle{
+        Point: Point{X: 8, Y: 8},
+        Radius: 5,
+    }.
+    Spokes: 20
+}
+fmt.Printf("%#v\n", w)
+// Output:
+// Wheel{Circle:Circle{Point:Point{X:8, Y:8}, Radius:5}, Spokes:20}
+w.X = 42
+fmt.Printf("%#v\n", w)
+// Output:
+// Wheel{Circle:Circle{Point:Point{X:42, Y:8}, Radius:5}, Spokes:20}
+```
+
+>  %v	the value in a default format
+
+Notice how the # adverb causes *Printf’s %v verb* to display values in a form similar to Go syntax. For struct values, this form includes the name of each field.
+
+## 4.5 JSON
+
+JavaScript Object Notation (JSON) is a standard notation for sending and receiving structured information. 
+
+JSON is an encoding of JavaScript values—strings, numbers, booleans, arrays, and objects—as Unicode text.
+
+***The basic JSON types are numbers (in decimal or scientific notation), booleans (true or false), and strings,*** which are sequences of Unicode code points enclosed in double quotes, with backslash escapes using a similar notation to Go, though JSON’s \Uhhhh numeric escapes denote UTF-16 codes, not runes.
+
+These basic types may be combined recursively using JSON arrays and objects.
+
+```go
+type Movie struct{
+    Title string
+    //Change the name in JSON
+    Year int 'json:"released"'
+    Color bool 'json:"color,omitempty"'
+    Actors []string
+}
+var movie = []Movie{
+      {Title: "Casablanca",
+       Year: 1942,
+       Color: false,
+       Actors: []string{"Humphrey Bogart", "Ingrid Bergman"}
+      },
+    {
+        Title: "Cool Hand Luke",
+        Year: 1967,
+        Color: true,
+        Actors: []string{"Paul Newman"}
+    },
+    {Title: "Bullitt",
+     Year: 1968,
+     Color: true,
+     Actors: []string{"Steve McQueen", "Jacqueline Bisset"}
+    },
+    ...    
+}
+```
+
+***Data structures like this are an excellent fit for JSON***, and it’s easy to convert in both directions. Converting a Go data structure like movies to JSON is called marshaling. Marshaling is done by ***json.Marshal***:
+
+```go
+data, err := json.marshal(movies)
+if err != nil {
+    log.Fatalf("JSON marshaling failed: %s", err)
+}
+fmt.Printf("%s\n", data)
+
+//Output
+[{"Title":"Casablanca","released":1942,"Actors":["Humphrey Bogart","Ingr
+id Bergman"]},{"Title":"Cool Hand Luke","released":1967,"color":true,"Ac
+tors":["Paul Newman"]},{"Title":"Bullitt","released":1968,"color":true,"
+Actors":["Steve McQueen","Jacqueline Bisset"]}]
+```
+
+This compact representation contains all the information but it’s hard to read. For human consumption, a variant called ***json.MarshalIndent*** produces ***neatly indented output.*** 
+
+***Two additional arguments define a prefix for each line of output and a string for each level of indentation:***
+
+```go
+data, err := json.MarshalIndent(movies, "", " ")
+//json.MarshalIndent(data, prefix, indentation)
+if err != nil {
+log.Fatalf("JSON marshaling failed: %s", err)
+}
+fmt.Printf("%s\n", data)
+
+//Output
+[
+    {
+        "Title": "Casablanca",
+        "released": 1942,
+        "Actors": [
+            "Humphrey Bogart",
+            "Ingrid Bergman"
+        	]
+        },
+        {
+            "Title": "Cool Hand Luke",
+            "released": 1967,
+            "color": true,
+            "Actors": [
+            	"Paul Newman"
+        	]
+        },
+        {
+            "Title": "Bullitt",
+            "released": 1968,
+            "color": true,
+            "Actors": [
+                "Steve McQueen",
+                "Jacqueline Bisset"
+        ]
+    }
+]
+```
+
+The tag for Color has an additional option, *omitempty*, ***which indicates that no JSON output should be produced if the field has the zero value for its type (false, here) or is otherwise empty.***
+
+The inverse operation to marshaling, decoding JSON and populating a Go data structure, is called *unmarshaling*, and it is done by ***json.Unmarshal***.
+
+***The code below unmarshals the JSONmoviedata into a slice of structs whose only field is Title.***
+
+```go
+var titles []struct{ Title string }
+if err := json.Unmarshal(data, &titles); err != nil {
+log.Fatalf("JSON unmarshaling failed: %s", err)
+}
+fmt.Println(titles)
+//output
+//"[{Casablanca} {Cool Hand Luke} {Bullitt}]"
+```
+
+## 4.6 Text and HTML Template
+
+***sometimes formatting must be more elaborate, and it’s desirable to separate the format from the code more completely.*** This can be done with the *text/template* and *html/template* packages, which provide a mechanism for substituting the values of variables into a text or HTML template.
+
+A template is a string or file containing one or more portions enclosed in double braces, {{...}}, called *actions.*
+
+```go
+const templ = '{{.TotalCount}} issues:
+{{range.Items}}-------------------------------------
+Number: {{.Number}}
+User: {{.User.Login}}
+Title: {{.Title | printf "%.64s"}}
+Age: {{.CreatedAt | daysAgo}} days
+{{end}}'
+```
+
+This template first prints the number of matching issues, then prints the number, user, title, and age in days of each one.
+
+Within an action, the | notation makes the result of one operation the argument of another, analogous to a Unix shell pipeline.
