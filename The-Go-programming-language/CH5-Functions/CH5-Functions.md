@@ -152,3 +152,85 @@ os.RemoveAll(dir) //Ignore errors
 
 
 Get into the habit of considering errors after every function call, and when you deliberately ignore one, document your intention clearly.
+
+### 5.4.2 End of File(EOF)
+
+if the caller repeatedly tries to read fixed-size chunks until the file is exhausted, the caller must respond differently to an end-of-file condition than it does to all other errors. ***For this reason, the io package guarantees that any read failure caused by an end-of-file condition is always reported by a distinguished error, io.EOF,***
+
+```go
+package io
+import "errors"
+var EOF = errors.New("EOF")
+
+in := bufio.NewReader(os.Stdin)
+for {
+    r, _, err := in.ReadRune()
+    if err == io.EOF {
+        break
+    }
+    if err != nil {
+        return fmt.Errorf("read failed: %v", err)
+    }
+}
+```
+
+5.5 Function Values
+
+Functions are first-class values in GO:like other values, function values have types, and they may be assigned to variables or passed to or returned from functions. ***A function values may be called like any other function.***
+
+> similar with function pointer or lambda?
+
+***The zero value of a function type is nil.***  
+
+```go
+var f func(int) int
+if f != nil {
+    f(3)
+}
+```
+
+***But they are not comparable***
+
+```go
+Printf("%*s</%s>\n", depth*2, "", n.Data)
+```
+
+The * adverb in %*s prints a string padded with a variable number of spaces.
+
+## 5.6 Anonymous Functions
+
+Named functions can be declared only ate the package level, but we can use a function literal to denote a function value within any expression.
+
+```go
+//Example
+func squares() func() int {
+	var x int
+	return func() int {
+		x++
+		return x * x
+	}
+}
+```
+
+> ***function*** is returned
+
+These hidden variable references are why we classify functions as reference types and why function values are not comparable. ***Function values like these are implemented using a technique called closures, and Go programmers often use this term for function values.***
+
+When an anonymous function requires recursion, ***we must first declare a variable, and then assign the anonymous function to that variable.***
+
+```go
+visitAll = func(items []string) {
+    for _, item := range items {
+        if !seen[item] {
+            seen[item] = true
+            visitAll(m[item])
+            order = append(order, item)
+        }
+    }
+}
+//visitAll := func()
+//Worng!!!!
+```
+
+#### 5.6.1 Caveat: Capturing iteration Variables
+
