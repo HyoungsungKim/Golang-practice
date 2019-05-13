@@ -234,3 +234,244 @@ visitAll = func(items []string) {
 
 #### 5.6.1 Caveat: Capturing iteration Variables
 
+We’ll look at a pitfall of Go’s lexical scope rules that can cause surprising results.
+
+```go
+//Right version
+var rmdirs []func()
+for _, d := range tenpDirs)_ {
+    dir := d
+    os.MkdirAll(dir, 0755)
+    rmdirs = append(rmdirs, func() {
+        os.RemoveAll(dir)
+    })
+    //... do some work...
+    for _, rmdir := range rmdirs {
+        rmdirs()
+    }    
+}
+
+//Wrong version
+var rmdirs []finc()
+for _, dir := range tempDirs() {
+    os.MkdirAll(dir, 0755)
+    rmdirs = append(rmdirs, func() {
+        os.RemoveAll(dir)
+    })
+}
+//아니... 이거는 당연히 안되져;;
+```
+
+*dir* is defined. The reason is a consequence of the scope rules for loop variables.
+
+The value of dir is updated in successive iterations, so by the time the cleanup functions are called, ***the dir variable has been updated several times by the now-completed for loop.*** Thus dir holds the value from the final iteration, and consequently all calls to os.RemoveAll will attempt to remove the same director y.
+
+
+
+## 5.7 Variadic Functions
+
+A variadic function is one that can be called with varying numbers of arguments. The most familiar examples are fmt.Printf and its variants.
+
+***Printf requires one fixed argument at the beginning, then accepts any number of subsequent arguments.***
+
+To declare a variadic function, the type of the final parameter is preceded by an ellipsis, ‘‘...’’, which indicates that the function may be called with any number of arguments of this type.
+
+```go
+func sum(cals ...int) int {
+    total := 0
+    for _, val := reange vals {
+        total += val
+    }
+    return total
+}
+values := []int{1,2,3,4}
+fmt.Println(sum(values...)) // "10"
+```
+
+Although the ...int parameter behaves like a slice within the function body, the type of a variadic function is distinct from the type of a function with an ordinary slice parameter.
+
+```go
+func f(...int) {}
+func g([]int) {}
+fmt.Printf("%T\n", f) // "func(...int)"
+fmt.Printf("%T\n", g) // "func([]int)"
+```
+
+
+
+## 5.8 Deferred Function Calls
+
+```go
+package main
+
+import (
+	"CH5/outline2"
+	"fmt"
+	"net/http"
+	"os"
+	"strings"
+
+	"golang.org/x/net/html"
+)
+
+func title(url string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	ct := resp.Header.Get("Content-Type")
+	if ct != "text/html" && !strings.HasPrefix(ct, "text/html;") {
+		resp.Body.Close()
+		return fmt.Errorf("%s has type %s, not text/html", url, ct)
+	}
+	doc, err := html.Parse(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("Parsing %s as HTML: %v", url, err)
+	}
+	visitNode := func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "title" && n.FirstChild != nil {
+			fmt.Println(n.FirstChild.Data)
+		}
+	}
+	outline2.ForEachNode(doc, visitNode, nil)
+	return nil
+}
+func main() {
+	title(os.Args[1])
+}
+
+/*
+C:\github-repository\Golang-practice\The-Go-programming-language>title1.exe http://gopl.io
+The Go Programming Language
+*/
+```
+
+​	resp.Body.Close() is duplicated -> Errors can be happened
+
+***A defer statement is often used with paired operations like open and close***, connect and disconnect, or lock and unlock to ensure that resources are released in all cases, no matter how complex the control flow.
+
+***The right place for a defer statement that releases a resource is immediately after the resource has been successfully acquired.***
+
+```go
+//More elegance way
+package main
+
+import (
+	"CH5/outline2"
+	"fmt"
+	"net/http"
+	"os"
+	"strings"
+
+	"golang.org/x/net/html"
+)
+
+func title(url string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	ct := resp.Header.Get("Content-Type")
+	if ct != "text/html" && !strings.HasPrefix(ct, "text/html;") {
+		return fmt.Errorf("%s has type %s, not text/html", url, ct)
+	}
+	doc, err := html.Parse(resp.Body)
+	if err != nil {
+		return fmt.Errorf("Parsing %s as HTML : %v", url, err)
+	}
+
+	visitNode := func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "title" && n.FirstChild != nil {
+			fmt.Println(n.FirstChild.Data)
+		}
+	}
+	outline2.ForEachNode(doc, visitNode, nil)
+	return nil
+}
+func main() {
+	title(os.Args[1])
+}
+```
+
+***The defer statement can also be used to pair ‘‘on entry’’ and ‘‘on exit’’ actions when debugging a complex function.***
+
+By deferring a call to the returned function in this way, we can instrument the entry point and all exit points of a function in a single statement and even pass values, like the start time, be ween the two actions.
+
+defer red functions aren't executed until the very end of a function’s execution, a defer statement in a loop deserves extra scrutiny.
+
+> scrutiny : 정밀 조사
+
+The code below could run out of file descriptors since no file will be closed until all files have been processed:
+
+```go
+for _, filename := range filenames {
+    f, err := os.Open(filename)
+    if err != nil {
+    return err
+}
+defer f.Close() // NOTE: risky; could run out of file descriptors
+// ...process f...
+}
+```
+
+## 5.9 Panic
+
+Go’s type system catches many mistakes at compile time, but others, like an out-of-bounds array access or nil pointer dereference, require checks at run time. When the Go runtime detects these mistakes, it ***panics***.
+
+During a typical panic, normal execution stops, all defer red function cal ls in that goroutine are executed, and the program crashes with a log message.
+
+Not all panics come from the runtime. The built-in panic function may be called directly;
+
+```go
+func Reset(x *Buffer){
+    if x == nil {
+        panic("x is nil")
+    }
+    x.elements = nil
+}
+```
+
+Although Go’s panic mechanism resembles exceptions in other languages, the situations in which panic is used are quite different.
+
+Since a panic causes the program to crash, it is generally used for grave errors, such as a logical inconsistency in the program
+
+When a panic occurs, all deferred functions are run in reverse order, starting with those of the topmost function on the stack and proceeding up to main, as the program below demonstrates:
+
+```go
+func main() {
+    f(3)
+}
+func f(x int) {
+    fmt.Printf("f(%d)\n", x + 0/x)
+    defer fmt.Printf("defer %d\n",x)
+    f(x - 1)
+}
+// Result
+f(3)
+f(2)
+f(1)
+defer 1
+defer 2
+defer 3
+```
+
+## 5.10 Recover
+
+Giving up is usually the rig ht response to a panic, but not always. It might be possible to recover in some way, or at least clean up the mess before quitting.
+
+If the built-in recover function is called within a deferred function and the function containing the defer statement is panicking, recover ends the current state of panic and returns the panic value.
+
+> [For-more-information](https://blog.golang.org/defer-panic-and-recover)
+
+
+
+```go
+//It returns 2
+func c() (i int) {
+    defer func() { i++ }()
+    return 1
+}
+```
+
