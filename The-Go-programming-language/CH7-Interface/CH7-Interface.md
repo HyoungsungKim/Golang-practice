@@ -154,3 +154,82 @@ sort.Sort(StringSlice(names))
 
 ## 7.7 The http.Handler Interface
 
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+)
+
+func main() {
+	db := database{"shoes": 50, "sockes": 5}
+	log.Fatal(http.ListenAndServe("localhost:8000", db))
+}
+
+type dollars float32
+
+func (d dollars) String() string { return fmt.Sprintf("$%.2f", d) }
+
+type database map[string]dollars
+
+func (db database) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	for item, price := range db {
+		fmt.Fprintf(w, "%s: %s\n", item, price)
+	}
+}
+//In browser, localhost:8000
+//shoes: $50.00
+//sockes: $5.00
+```
+
+Obviously we could keep adding cases to ServeHTTP, but in a realistic application, it’s convenient to define the logic for each case in a separate function or method. Furthermore, related URLs may need similar logic; several image files may have URLs of the for m /images/*.png, for instance. For these reasons, net/http provides ServeMux, a request multiplexer, to simplify the association between URLs and handlers. A ServeMux aggregates a collection of http.Handlers into a single http.Handler. Again, we see that different types satisfying the same interface are substitutable:the web server can dispatch requests to any http.Handler, regardless of which concrete type is behind it.
+
+> aggregates : 합계, 총액
+
+The expression http.HandlerFunc(db.list) is a conversion, not a function call, since http.HandlerFunc is a type.
+
+## 7.8 The error Interface
+
+```go
+type error interface {
+    Error() string
+}
+```
+
+> inadvertent : 고의가 아닌
+
+The underlying type of error String is a struct,not a string , to protect its representation from inadvertent(or premeditated) updates. And the reason that the pointer type *errorString, not errorString alone, satisfies the error interface is so that
+
+***every call to New allocates a distinct error instance that is equal to no other.***
+
+```go
+fmt.Println(errors.New("EOF") == errors.New("EOF"))	//false
+```
+
+```go
+var errors = [...]string{
+    1: "operation not permitted",	 // EPERM
+    2: "no such file or directory",	 // ENOENT
+    3: "no such process",			// ESRCH 
+    // ...
+}
+func (e Errno) Error() string {
+	if 0 <= int(e) && int(e) < len(errors) {
+        return errors[e]
+	}
+	return fmt.Sprintf("errno %d", e)
+}
+
+var err error = syscall.Errno(2)
+fmt.Println(err.Error()) // "no such file or directory"
+fmt.Println(err)		// "no such file or directory"
+```
+
+## 7.9 Example: Expression Evaluator
+
+> How can i get Parse function...
+
+## 7.10 Type Assertion
+
