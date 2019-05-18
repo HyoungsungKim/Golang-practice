@@ -233,3 +233,81 @@ fmt.Println(err)		// "no such file or directory"
 
 ## 7.10 Type Assertion
 
+A type assertion is an operation applied to an interface value. 
+
+```go
+//Syntactically, it looks like
+x.(T)
+```
+
+There are two possibilities. ***First, if the asserted type T is a concrete type,*** then the type assertion checks whether x’s dynamic type is identical to T. ***A type assertion to a concrete type extracts the concrete value from its operand. If the check fails, then the operation panics.***
+
+> assert : 주장하다
+
+***Second, if instead the asserted type T is an interface type,*** then the type assertion checks whether x’s dynamic type satisfies T. A type assertion to an interface type changes the type of the expression, making a different(and usually larger) set of methods accessible, but ***it preserves the dynamic type and value components inside the interface value.***
+
+## 7.11 Discriminating Errors with Type Assertions
+
+Three kinds of failure often must be handled differently:
+
+- file already exists(for create operations)
+- file not found (for read operations)
+- permission denied.
+
+The os package provides these three helper functions to classify the failure indicated by a given error value"
+
+```go
+package os
+func IsExist(err error) bool
+func IsNotExist(err error) bool
+func IsPermission(err error) bool
+```
+
+## 7.12 Querying Behaviors with Interface Type Assertions
+
+Can we avoid allocating memory here?
+
+```go
+func writeString(w io.Writer, s string) (n int, err error) {
+    type stringWriter interface {
+        WriteString(string) (n int, err error)
+    }
+    if sw, ok := w.(stringWriter); ok {
+        return sw.WriteString(s)
+    }
+    return w.Write([]bytes(s))
+}
+
+func writeHeader(w io.Writer, contentType string) error {
+    if _, err := writeString(w, "Content-Type: "); err != nil {
+        return err
+    }
+    if _, err := writeString(w, contentType); err != nil {
+        return err
+    }
+    //...
+}
+```
+
+
+
+## 7.13 Type Switches
+
+Interfaces are used in two distinct styles. 
+
+- In the first style, exemplified by io.Reader, io.Writer, fmt.Stringer, sort.Interface, http.Handler, and error, an interface’s methods express the similarities of the concrete types ***that satisfy the interface but hide the representation details and intrinsic operations of those concrete types.***
+
+> intrinsic  : 고유한, 본질적인
+>
+> discriminate  : 식별하다
+>
+> exploit : 이용하다, 착취하다.
+
+- The second style exploits the ability of an interface value to hold values of a variety of concrete types and considers the interface to be the union of those types. Type assertions are used to discriminate among these types dynamically and treat each case differently. ***In this style, the emphasis is on the concrete types that satisfy the interface, not on the interface’s methods(if indeed it has any), and there is no hiding of information.***
+
+## 7.15 A Few Words of Advice
+
+When designing a new package, novice Go programmers often start by creating a set of interfaces and only later define the concrete types that satisfy them. This approach results in many interfaces, each of which has only a single implementation. ***Don’t do that.*** Such interfaces are unnecessary abstractions; they also have a runtime cost. You can restrict which methods of a type or fields of a struct are visible outside a package using the export mechanism. ***Interfaces are only needed when there are two or more concrete types that must be dealt with in a uniform way.***
+
+
+
