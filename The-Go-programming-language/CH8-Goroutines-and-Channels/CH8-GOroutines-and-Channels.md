@@ -104,3 +104,105 @@ go handleConn(conn)
 > But in go handleConn(conn), multi-terminal work concurrently
 
 ## 8.3 Example:Concurrent Echo Server
+
+In this section, we’ll build an echo server that uses multiple goroutines per connection. Most echo servers merely write whatever they read, which can be done with this trivial version of handleConn:
+
+## 8.4 Channels
+
+***If goroutines are the activities of a concurrent Go program, channels are the connections between them.***
+
+To create a channel, we use the built-in make function:
+
+```go
+ch := make(chan int)	//ch has type 'chan int'
+```
+
+A channel is a reference to the data structure created by make.
+
+When we copy a channel or pass one as an argument to a function, ***we are copying a reference, so caller and callee refer to the same data structure.*** As with other reference types, ***the zero value of a channel is nil.***
+
+A channel has two principal operations collectively known as communications.
+
+> principal : 주요한, 주된
+
+- send
+
+***A send statement transmits a value from one goroutine, through the channel,*** to another goroutine executing a corresponding receive expression. Both operations are written using the <- operator.
+
+```go
+ch <- x // a send statement
+x = <- ch // a receive expression in an assignment statment
+<- ch // a receive statement; result is discarded
+```
+
+- receive
+
+Channels support a third operation, close, which sets a flag indicating that no more values will ever be sent on this channel; subsequent attempts to send will panic. 
+
+> subsequent : 그 다음의, 차후의
+
+***closed channel yield the values that have been sent until no more values are left;*** any receive operations there after complete immediately and yield the zero value of the channel’s element type.
+
+```go
+close(ch) //To close channel
+ch = make(chan int)		//unbuffered channel
+ch = make(chan int, 0)	//unbuffered channel
+ch = make(chan int, 3)	// buffered channel with capacity 3
+```
+
+### 8.4.1 Unbuffered Channels
+
+A send operation on an unbuffered channel ***blocks the sending goroutine until another goroutine executes a corresponding receive on the same channel,*** at which point the value is transmitted and both goroutines may continue.
+
+Conversely, ***if the receive operation was attempted first, the receiving goroutine is blocked until another goroutine performs a send on the same channel***
+
+Communication over an unbuffered channel causes the sending and receiving goroutines to synchronize. Because of this, ***unbuffered channels are sometimes called synchronous channels.*** 
+
+it’s necessary to order certain events during the program’s execution ***to avoid the problems that arise when two goroutines access the same variable concurrently.***
+
+### 8.4.2 Pipelines
+
+Channels can be used to connect goroutines together ***so that the output of one is the input to another. This is called a pipeline.***
+
+> Output is input of others -> pipeline
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	naturals := make(chan int)
+	squares := make(chan int)
+
+	go func() {
+		for x := 0; x < 100; x++ {
+			naturals <- x
+		}
+		close(naturals)
+	}()
+
+	go func() {
+		for x := range naturals {
+			squares <- x * x
+		}
+		close(squares)
+	}()
+
+	for x := range squares {
+		fmt.Println(x)
+	}
+}
+```
+
+***You needn’t close every channel when you've finished with it.*** It’s only necessary to ***close a channel when it is important to tell the receiving goroutines that all data have been sent.***
+
+### 8.4.3 Unidirectional Channel Types
+
+This arrangement is typical. When a channel is supplied as a function parameter, it is nearly always with the intent that it be used exclusively for sending or exclusively for receiving.
+To document this intent and prevent misuse, ***the Go type system provides unidirectional channel types that expose only one or the other of the send and receive operations.***
+
+> intent  : 강한 관심을 보이는
+
+- The type *chan<- int*, a send-only channel of int, allows sends but not receives.
+- Conversely, the type *<-chan int*, a receive-only channel of int, allows receives but not sends.
