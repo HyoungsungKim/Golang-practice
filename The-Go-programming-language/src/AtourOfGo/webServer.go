@@ -13,5 +13,7 @@ func (h Hello) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func main() {
     var h Hello
+    var i Hello
     http.ListenAndServe("localhost:8000", h)
+    http.ListenAndServe("localhost:8000", i)
 }

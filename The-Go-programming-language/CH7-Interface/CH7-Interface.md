@@ -102,7 +102,11 @@ fmt.Println(c.String()) // "100°C"
 
 A type satisfies an interface if it possesses all the methods the interface requires.
 
-Go programmers often say that a concrete type ‘‘is a’’ particular interface type,meaning that it satisfies the interface. 
+***Go programmers often say that a concrete type ‘‘is a’’ particular interface type, meaning that it satisfies the interface.***
+
+> concrete type은 interface의 특정한 type이다.
+
+For example, a *bytes.Buffer is an io.Writer; an *os.File is an io.ReadWriter.
 
 ```go
 var w io.Writer
@@ -115,7 +119,52 @@ rwc = os.Stdout			//OK
 rwc = new(bytes.Buffer)	//error
 ```
 
-The type interface{}, which is called the empty interface type, is indispensable. Because the empty interface type places no demands on the types that satisfy it, we can assign any value to the empty interface.
+Before we go further, we should explain one subtlety in what it means for a type to have a method.
+
+Recall from Section 6.2 that for each named concrete type T, some of its methods have a receiver of type T itself where as others require a *T pointer.*
+
+Recall also that it is legal to call a *T method on an argument of type T so long as the argument is a variable; the compiler implicitly takes its address. But this is mere syntactic sugar : a value of type T does not possess all the methods that a *T pointer does, and as a result it might satisfy fewer interfaces.
+
+```go
+type IntSet struct {/* ... */}
+func (*IntSet) String() string
+var _ = IntSet{}.String()	// Compile error : String requires *IntSet receiver
+```
+
+but we can call it on an `IntSet` variable:
+
+```go
+var s IntSet
+var _= s.String()	// Ok: s is a variable and &s has a String method
+```
+
+> variable은 호출 가능
+
+However, since only *IntSet has a String method, only *IntSet satisfies the fmt.Stringer interface:
+
+```go
+var _ fmt.Stringer = &s	// OK
+var _ fmt.Stringer = s	// compile error: IntSet lacks String method
+```
+
+***An interface wraps and conceals the concrete type and value that it holds.*** Only the methods revealed by the interface type maybe called, even if the concrete type has others:
+
+```go
+os.Stdout.Write([]byte("hello"))  // OK: *os.File has Write method
+os.Stdout.Close()				// OK: *os.File has Close method
+var w io.Writer
+w = os.Stdout
+w.Write([]byte("hello"))		// OK: io.Writer has write method
+w.Close()					// compile error: io.Writer lacks Close method
+```
+
+***What does the type interface{}, which has no methods at all, tell us about the concrete types that satisfy it?***
+
+That’s right: nothing. This may seem useless, but in fact the ***type interface{}, which is called the empty interface type, is indispensable.***
+
+> indispensable : 없어서는 안될, 필수적인
+
+Because the empty interface type places no demands on the types that satisfy it, ***we can assign any value to the empty interface.***
 
 ```go
 var any interface{}
@@ -128,23 +177,52 @@ any = new(bytes.Buffer)
 
 > Similar with void* in C/C++
 
-Since interface satisfaction depends only on the methods of the two types involved, there is no need to declare the relationship between a concrete type and the interfaces it satisfies.
+Since interface satisfaction depends only on the methods of the two types involved, ***there is no need to declare the relationship between a concrete type and the interfaces it satisfies.*** That said, it is occasionally useful to document and assert the relationship when it is intended but not otherwise enforced by the program. The declaration below asserts at compile time that a value of type *bytes.Buffer satisfies io.Writer:
 
 ```go
+// *bytes.Buffer must satisfy io.Writer
+var w io.Writer = new(bytes.Buffer)
+```
+
+We needn't allocate a new variable since any value of type *bytes.Buffer will do, even nil, which we write as (*bytes.Buffer)(nil) using an explicit conversion. And since we never intend to refer to w, we can replace it with the blank identifier. Together, these changes give us this more frugal variant:
+
+> frugal  : 절약하는
+
+```go
+// *bytes.Buffer must satisfy io.Writer
+var _ io.Writer = (*bytes.Buffer)(nil)
+```
+
+A concrete type may satisfy many unrelated interfaces.
+
+```go
+/*
+Defined concrete type
+Album
+Book
+Movie
+Magazine
+Podcast
+TVEpisode
+Track
+*/
+
+//interface which will be used commonly
 type Artifact interface {
-    Title() String
+    Title() string
     Creators() []string
-    Created() time.time
+    Created() time.Time
 }
+//restricted interface for certain types
 type Text interface {
     Pages() int
     Words() int
-    PageSize() int
+    pageSize() int
 }
 type Audio interface {
     Stream() (io.ReadCloser, error)
     RunningTime() time.Duration
-    Format() string
+    Fromat() string
 }
 type Video interface {
     Stream() (io.ReadCloser, error)
@@ -153,6 +231,8 @@ type Video interface {
     Resolution() (x, y int)
 }
 ```
+
+Unlike class-based languages, in which the set of interfaces satisfied by a class is explicit, ***in Go we can define new abstractions or groupings of interest when we need them, without modifying the declaration of the concrete type.**
 
 ## 7.4 Parsing Flags with flag.Value
 
