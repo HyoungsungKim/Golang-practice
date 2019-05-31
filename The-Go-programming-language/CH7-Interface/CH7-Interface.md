@@ -236,6 +236,19 @@ Unlike class-based languages, in which the set of interfaces satisfied by a clas
 
 ## 7.4 Parsing Flags with flag.Value
 
+***인터페이스를 함수의 매개변수로 사용***
+
+```go
+var period = flag.Duration("peroid", 1*time.Second, "sleep preiod")
+func main() {
+    flag.Parse()
+    fmt.Printf("Sellping for %v...", *period)
+    time.Sleep(*period)
+    fmt.Println()
+}
+//reference : func Duration(name string, value time.Duration, usage string) *time.Duration
+```
+
 Because duration-valued flags are so useful, this feature is built in to the flag package, but it’s easy to define new flag notations for our own data types. We need only define a type that satisfies the flag.Value interface.
 
 ```go
@@ -243,6 +256,26 @@ package flag
 type Value interface {
     String() string
     Set(string) error
+}
+```
+
+The Set method parses its string argument and updates the flag value. In effect, the Set method is the inverse of the String method, and it is good practice for them to use the same notation.
+
+```go
+type celsiusFlag struct{ Celsius }
+func(f *celsiusFlag) Set(s string) error {
+    var unit string
+    var value float64
+    fmt.Scanf(s, "%f%s", &value, &unit)
+    switch unit {
+    case "C" :
+        f.Celsius = Celsius(value)
+        return nil
+   	case "F":
+        f.Celsius = FToC(Fahrenheit(value))
+        return nil
+    }
+return fmt.Errorf("invalid temperature %q", s)
 }
 ```
 
@@ -260,16 +293,40 @@ w = nil
 An interface value is described as nil or non-nil based on its dynamic type, so this is a nil interface value.You can test whether an interface value is nil using w==nil or w!=nil. Calling any method of a nil interface value causes a panic:
 
 ```go
+//You can test whether an interface value isnil using w==nil or w!=nil.
+//Calling any method of a nil interface value causes a panic:
+var w io.Writer
 w.Write([]byte("hello"))	//panic : nil pointer dereference
 ```
 
-In general,we cannot know at compile time what the dynamic type of an interface value will be,so a call through an interface must use dynamic dispatch.
+The second statement assigns a value of type *os.File to w:
 
-An interface value can hold arbitrarily large dynamic values. For example, the time.Time type,which represents an instant in time, is a struct type with several unexported fields.If we create an interface value from it.
+```go
+// io.Writer is interface
+w = os.Stdout
+```
+
+***This assignment involves an implicit conversion from a concrete type to an interface type,*** and is equivalent to the ***explicit conversion io.Writer(os.Stdout)***.
+
+In general,we cannot know at compile time what the dynamic type of an interface value will be,so a call through an interface must use ***dynamic dispatch.***
+
+Instead of a direct call, the compiler must generate code to obtain the address of the method named `Write` from the type descriptor, then make an indirect call to that address.
+
+The third statement assigns a value of type *bytes. Buffer to the interface value:
+
+```go
+w = new(bytes.Buffer)
+```
+
+***An interface value can hold arbitrarily large dynamic values.*** For example, the time.Time type,which represents an instant in time, is a struct type with several unexported fields.If we create an interface value from it.
 
 ```go
 var x interface{} = time.now()
 ```
+
+Two interface values are equal if both are nil, or if their dynamic types are identical and their dynamic values are equal according to the usualbeh avior of == forthattyp e
+
+
 
 Other types are either safely comparable (like basic types and pointers)or not comparable at all(like slices, maps, and functions), ***but when comparing interface values or aggregate types that contain interface values, we must be aware of the potential for a panic.*** A similar risk exists when using interfaces as map keys or switch operands. ***Only compare interface values if you are certain that they contain dynamic values of comparable types***
 
