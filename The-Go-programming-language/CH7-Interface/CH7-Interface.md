@@ -324,15 +324,27 @@ w = new(bytes.Buffer)
 var x interface{} = time.now()
 ```
 
-Two interface values are equal if both are nil, or if their dynamic types are identical and their dynamic values are equal according to the usualbeh avior of == forthattyp e
+***Two interface values are equal if both are nil, or if their dynamic types are identical and their dynamic values are equal according to the usual behavior of == for that type***
 
-
+```go
+var x interface{} = []int{1, 2, 3}
+fmt.Println(x == x)	// panic : comparing uncomparable type []int
+```
 
 Other types are either safely comparable (like basic types and pointers)or not comparable at all(like slices, maps, and functions), ***but when comparing interface values or aggregate types that contain interface values, we must be aware of the potential for a panic.*** A similar risk exists when using interfaces as map keys or switch operands. ***Only compare interface values if you are certain that they contain dynamic values of comparable types***
 
+When handling errors, or during debugging, ***it is often helpful to report the dynamic type of an interface value.*** For that, we use the fmt package’s %T verb:
+
 ```go
-var w io.Wirter
-fmt.Println(x == x)	// Panic
+// io.Writer is interface
+var w io.Writer
+fmt.Printf("%T\n", w)	// "<nil>"
+
+w = os.Stdout
+fmt.Printf("%T\n", w)	// "*os.File"
+
+w = new(bytes.Buffer)
+fmt.Printf("%T\n", w)	// "*bytes.Buffer"
 ```
 
 ## 7.5.1 Caveat: An Interface Containing a Nil pointer is Non-Nil
