@@ -352,7 +352,7 @@ fmt.Printf("%T\n", w)	// "*bytes.Buffer"
 ***A nil interface value, which contains no value at all, is not the same as an interface value containing a pointer that happens to be nil.*** This subtle distinction creates a trap into which every Go programmer has stumbled.
 
 ```go
-Const debug = true
+const debug = true
 func main() {
     var buf *bytes.Buffer
     if debug {
@@ -369,6 +369,14 @@ func f(out io.Writer) {
     }
 }
 ```
+
+```go
+if out != nil {
+    out.Write([]byte("done!\n"))	//panic : nil pointer dereference
+}
+```
+
+out에 bytes.buffer를 대입 함(인터페이스에 타입을 넣음:io.Writer이 bytes.Buffer 타입으로 구현되어있음) 아니 근데 이걸 어떻게 알지...
 
 ## 7.6 Sorting with sort.Interface
 
