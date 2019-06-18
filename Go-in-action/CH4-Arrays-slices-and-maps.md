@@ -122,3 +122,24 @@ func main() {
 
 #### Three index slices
 
+The purpose is not to increase capacity, but to restrict the capacity. 
+
+```go
+source := []string{"Apple", "Orange", "Plum", "Banana", "Grape"}
+slice := source[2:3:4]
+```
+
+```go
+source := []string{"Apple", "Orange", "Plum", "Banana", "Grape"}
+slice := source[2:3:3]
+slice = append(slice, "Kiwi")
+```
+
+```go
+s1 := []int{1, 2}
+s2 := []int{3, 4}
+s4 := append(s1, s2)
+fmt.Printf("%v\n", append(s1, s2...))
+//[1 2 3 4]
+```
+
