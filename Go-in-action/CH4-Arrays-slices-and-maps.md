@@ -140,6 +140,93 @@ s1 := []int{1, 2}
 s2 := []int{3, 4}
 s4 := append(s1, s2)
 fmt.Printf("%v\n", append(s1, s2...))
+//슬라이스에 슬라이스 붙일때 ... 씀
 //[1 2 3 4]
 ```
+
+#### Iterating over slices
+
+Since a slice is a collection, you can iterate over the elements.
+
+```go
+slice := []int{10, 20, 30, 40}
+for index, value := range slice {
+    fmt.Printf ("Index: %d Value: %d\n", index, value)
+}
+```
+
+***It’s important to know that range is making a copy of the value, not returning a reference.***
+
+```go
+slice := []int{10, 20, 30, 40}
+
+for index, value := range slice {
+    fmt.Printf("Value: %d Value-Addr: %X ElemAddr: %X\n", value, &value, &slice[index])
+}
+
+/*
+output: address is different
+Value: 10 Value-Addr: 10500168 ElemAddr: 1052E100
+.
+.
+.
+*/
+```
+
+If you don’t need the index value, you can use the underscore character to discard the value.
+
+```go
+slice := []int{10, 20, 30, 40}
+
+for _, value := range slice {
+    fmt.Println("Value : %d", value)
+}
+```
+
+***If you need more control iterating over a slice, you can always use a traditional for loop.***
+
+```go
+slice := []int{10, 20, 30, 40}
+
+for index := 2; index < len(slice); index++ {
+    fmt.Printf("Index %d Value: %d\n", index, slice[index])
+}
+```
+
+### 4.2.4 Multidimensional slices
+
+```go
+slice := [][]int{{10}, {100, 200}}
+slice[0] = append(slice[0], 20)
+```
+
+### 4.2.5 Passing slices between functions
+
+```go
+slice := make([]int, 1e6)
+slice = foo(slice)
+
+func foo(slice []int) []int {
+    ...
+    return slice
+}
+```
+
+***On a 64-bit architecture, a slice requires 24 bytes of memory.*** The pointer field requires 8 bytes, and the length and capacity fields require 8 bytes respectively.
+
+You don’t need to pass pointers around and deal with complicated syntax. You just create copies of your slices, make the changes you need, and then pass a new copy back.
+
+> slice 복사해서 함수 매개변수로 넣으면 알아서 주소로 전달 됨(와... 좋네)
+
+## 4.3 Map internals and fundamentals
+
+A map is a data structure that provides you with an unordered collection of key/value pairs.
+
+### 4.3.1 Internals
+
+Maps are unordered collections, and ***there’s no way to predict the order in which the key/value pairs will be returned.*** Even if you store your key/value pairs in the same order, every iteration over a map could return a different order. This is because a map is implemented using a hash table.
+
+***Just remember one thing: a map is an unordered collection of key/value pairs.***
+
+### 4.3.2 Creating and Initialzing
 
