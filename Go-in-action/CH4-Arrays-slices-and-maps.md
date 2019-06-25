@@ -228,5 +228,95 @@ Maps are unordered collections, and ***there’s no way to predict the order in 
 
 ***Just remember one thing: a map is an unordered collection of key/value pairs.***
 
-### 4.3.2 Creating and Initialzing
+### 4.3.2 Creating and Initializing
+
+```go
+dict := make(map[string]int)
+dict := map[string]string("Red": "#da1337", "Orange": "#e95a22")
+```
+
+map[a]b -> a is key, b is value
+
+### 4.3.3 Working with maps
+
+```go
+colors := map[string]string()
+colors["Red"] = "#da1337"
+```
+
+***A `nil` map can't be used to store key/value pairs.***
+
+```go
+var colors map[string]string
+colors["Red"] = "#da1337"
+
+//Runtime error
+```
+
+```go
+value, exists := colors["Blue"]
+
+if exists {
+    fmt.Println(value)
+}
+```
+
+hen you index a map in Go, it will always return a value, even when the key doesn't exist. In this case, the zero value for the value's type is returned.
+
+```go
+value, exists := colors["Blue"]
+
+if value != "" {
+    fmt.Println(value)
+}
+// value == "" : true
+// value != "" : false
+```
+
+iterating maps
+
+```go
+colors := map[string]string {
+    "Red":"red",
+    "Blue":"blue",
+    "Green":"green",
+}
+
+for key, value := range colors {
+    fmt.Println("key :%s value:%s",key, value)
+}
+```
+
+Removing an item from a map
+
+```go
+delete(colors, "Red")
+```
+
+### 4.3.4 passing maps between functions
+
+***Passing a map between two functions doesn’t make a copy of the map.***
+
+```go
+func map() {
+    colors := map[string]string {
+        "Red":"red"
+        "Blue":"blue"
+        "Green":"green"
+    }
+    
+    for key, value := range colors {
+        fmt.Printlf("Key: %s Value: %s ", key, value)
+    }
+    removeColor(colors, "Blue")
+    
+    for key, value := range colors {
+        fmt.Printf("key: %s Value: %s", key, value)
+    }
+}
+
+func removeColor(colors map[string]string, key string ) {
+    delete(colors, key)
+}
+```
 
