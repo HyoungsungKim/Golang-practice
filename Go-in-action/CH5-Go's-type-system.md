@@ -284,3 +284,167 @@ This shows that it's not always possible to get the address of a value.
 
 ### 5.4.4 Polymorphism
 
+```go
+package main
+
+import "fmt"
+
+type notifier interface {
+    notify()
+}
+
+type user struct {
+    name string
+    email string
+}
+
+func (u *user) notify() {
+    fmt.Printf("Sending user email to %s<%s>\n", u.name, u.email)
+}
+
+type admin struct {
+    name string
+    email string
+}
+
+func (a *admin) notify() {
+    fmt.Printf("Sending admin email to %s<%s>\n", a.name, a.email)
+}
+
+func main() {
+    bill := user{"Bill", "bill@email.com"}
+    sendNotification(&bill)
+    
+    lisa := admin("Lisa", "lisa@email.com")
+    sendNotification(&lisa)
+}
+
+func sendNotification(n notifier) {
+    n.notify()
+}
+```
+
+## 5.5 Type embedding
+
+Go allows you to take existing types and both extend and change their behavior. This capability is important for code reuse and for changing the behavior of an existing type to suit a new need. ***This is accomplished through type embedding.*** It works by taking an existing type and declaring that type within the declaration of a new struct type. The type that is embedded is then called an inner type of the new outer type.
+
+- ***Through inner type promotion, identifiers from the inner type are promoted up to the outer type.*** These promoted identifiers become part of the outer type as if they were declared explicitly by the type itself. The outer type is then composed of everything the inner type contains, and new fields and methods can be added.
+
+- The outer type can also declare the same identifiers as the inner type and override any fields or methods it needs to. This is how an existing type can be both extended and changed.
+
+```go
+package main
+import "fmt"
+
+type user struct {
+    name string
+    email string
+}
+
+func (u *user)notify() {
+    fmt.Printf("Name : %s, Email : %s", u.name, u.email)
+}
+
+type admin struct {
+    user	//Embedding Type
+    level string
+}
+
+func main() {
+    ad := admin{
+        user: user{
+            name: "john",
+            email: "john@email.com",
+        },
+        level : "super",
+    }
+    
+    ad.user.notify()
+    ad.notify()
+    //thanks to inner type promotion, the notify method can also be accessed directly from the ad variable.
+}
+/*
+Result
+Name : john, Email : john@email.com
+Name : john, Email : john@email.com
+*/
+```
+
+Once we embed the user type inside of admin , we can say that ***`user` is an inner type*** of the ***outer type `admin`*** . The concept of having an inner and outer type makes it easier to understand the relationship between the two.
+
+```go
+package main
+import "fmt"
+
+type user struct {
+    name string
+    email string
+}
+
+func (u *user)notify() {
+    fmt.Printf("Name : %s, Email : %s\n", u.name, u.email)
+}
+
+type admin struct {
+    user	//Embedding Type
+    level string
+}
+
+type notifies interface {
+    notify()
+} 
+
+func main() {
+    ad := admin{
+        user: user{
+            name: "john",
+            email: "john@email.com",
+        },
+        level : "super",
+    }
+    
+    ad.user.notify()
+    ad.notify()
+    //thanks to inner type promotion, the notify method can also be accessed directly from the ad variable.
+    sendNotification(&ad)
+}
+
+
+func sendNotification(n notifies) {
+    n.notify()
+}
+/*
+result
+Name : john, Email : john@email.com
+Name : john, Email : john@email.com
+Name : john, Email : john@email.com
+*/
+```
+
+***Thanks to inner type promotion, the implementation of the interface by the inner type has been promoted up to the outer type.*** That means the outer type now implements the interface, thanks to the inner type's implementation. When we run this sample program, we get the following output.
+
+## 5.6 Exporting and unexporting identifiers
+
+The ability to apply visibility rules to the identifiers you declare is critical for good API design. Go supports the exporting and unexporting of identifiers from a package to provide this functionality.
+
+Sometimes, ***you may not want identifiers such as types, functions, or methods to be a part of the public API for a package.*** In these cases, you need a way to declare those identifiers so they're unknown outside the package. You need to declare them to be unexported.
+
+```go
+package counters
+type alertCounter int
+```
+
+```go
+package main
+import (
+    "fmt"
+    "counters"
+)
+
+func main() {
+    counters := counters.alertCounter(10)
+    fmt.Printf("Counter: %d\n", counter)
+}
+```
+
+When an identifier starts with a lowercase letter, the identifier is unexported or unknown to code outside the package. When an identifier starts with an uppercase letter, it's exported or known to code outside the package. Let's look at the code that imports this package.
