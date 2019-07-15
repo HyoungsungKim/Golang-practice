@@ -1,6 +1,6 @@
 # CH6 Concurrency
 
-Concurrency in Go is the ability for functions to run independent of each other. When a function is created as a goroutine, ***it's treated as an independent unit of work that gets scheduled and then executed on an available logical processor.
+Concurrency in Go is the ability for functions to run independent of each other. When a function is created as a goroutine, ***it's treated as an independent unit of work that gets scheduled and then executed on an available logical processor.***
 
 The Go runtime scheduler is a sophisticated piece of software that manages all the goroutines that are created and need processor time. The scheduler sits on top of the operating system, binding operating system's threads to logical processors which, in turn, execute goroutines. The scheduler controls everything related to which goroutines are running on which logical processors at any given time. Concurrency synchronization comes from a paradigm called communicating sequential processes or CSP. CSP is a message-passing model that works by communicating data between goroutines instead of locking data to synchronize access. The key data type for synchronizing and passing messages between goroutines is called a channel. 
 
@@ -78,9 +78,67 @@ The keyword `defer` is used to schedule other functions from inside the executin
 ***Based on the internal algorithms of the scheduler, a running goroutine can be stopped and rescheduled to run again before it finishes its work.*** The scheduler does this to prevent any single goroutine from holding the logical processor hostage. It will stop the currently running goroutine and give another runnable goroutine a chance to run
 
 > That is why capital letter is printed first.
+>
+> 작업 중단하고 다른 작업 시작-종료 뒤 다시 돌아와서 작업 진행
+
+As stated earlier, the Go standard library has a function called `GOMAXPROCS` in the `runtime` package that allows you to specify the number of logical processors to be used by the scheduler. This is how you can change the runtime to allocate a logical processor for every available physical processor. The next listing will have our goroutines running in parallel.
 
 ```go
-//Listing 6.4
+import "runtime"
+runtime.GOMAXPROCS(runtime.NumCPU())
+```
+
+***It's important to note that using more than one logical processor doesn't necessarily mean better performance.*** Benchmarking is required to understand how your program performs when changing any runtime configuration parameters.
+
+## 6.3 Race condition
+
+When two or more goroutines have unsynchronized access to a shared resource and attempt to read and write to that resource at the same time, you have what's called a `race condition`.
+
+***Go has a special tool that can detect race conditions in your code.*** It's extremely useful to find these types of bugs, especially when they're not as obvious as our example. Let's run the race detector against our example code.
 
 ```
+go build -race
+./example
+```
+
+## 6.4 Locking Shared Resources
+
+Go provides traditional support to synchronize goroutines by locking access to shared resources. If you need to serialize access to an integer variable or a block of code, then the functions in the `atomic` and `sync` packages may be a good solution. We'll look at a few of the `atomic` package functions and the `mutex` type from the `sync` package.
+
+### 6.4.1 Atomic functions
+
+Two other useful `atomic` functions are `LoadInt64` and `StoreInt64`.
+
+***The atomic functions will synchronize the calls and keep all the operations safe and race condition–free.***
+
+### 6.4.2 Mutexes
+
+***Another way to synchronize access to a shared resource is by using a mutex.*** A mutex is named after the concept of mutual exclusion. ***A mutex is used to create a critical section around code that ensures only one goroutine at a time can execute that code section.***
+
+## 6.5 channels
+
+You also have `channels` that synchronize goroutines as they send and receive the resources they need to share between each other.
+
+When declaring a channel, the type of data that will be shared needs to be specified. Values and pointers of built-in, named, struct, and reference types can be shared through a channel.
+
+Creating a channel in Go requires the use of the built-in function `make`.
+
+```go
+unbuffered := make(chan int)
+buffered := make(chan string, 10)
+```
+
+Sending a value or pointer into a channel requires the use of the <- operator.
+
+```go
+buffered := make(chan string, 10)
+buffered <= "Gopher"
+value := <- buffered
+```
+
+#### 6.5.1 Unbuffered channels
+
+***Goroutine is locked in the channel until the exchange is complete.***
+
+#### 6.5.2 Buffered channels
 
