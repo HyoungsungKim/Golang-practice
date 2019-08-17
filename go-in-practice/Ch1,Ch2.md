@@ -160,3 +160,16 @@ parse the path portion of a URL.
 SOLUTION: MULTIPLE HANDLERS
 To expand on the method used in listing 1.16, this technique uses a handler function
 for each path. This technique, presented in the guide “Writing Web Applications” http://golang.org/doc/articles/wiki/, uses a simple pattern that can be great for web apps with only a few simple paths. This technique has nuances that you’ll see in a moment that may make you consider one of the techniques following it.
+
+#### Hiding Complex Paths with wildcards
+
+The previous technique is straightforward, but as you saw, it’s decidedly inflexible
+when it comes to path naming. You must list every single path that you expect to see.
+For larger applications or for applications that follow the REST recommendations, you
+need a more flexible solution.
+
+Problem
+Instead of specifying exact paths for each callback, an application may need to support wildcards or other simple patterns.
+
+Solution
+Go provides the path package with functionality to work with slash-separated paths. This package isn’t directly designed to work with URL paths. Instead, it’s a generic package intended to work with paths of all sorts. In fact, it works well when coupled with an HTTP handler.
