@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	//go run --race raceCondition.go 8txt
+	//go run --race raceCondition.go *.txt
 	var wg sync.WaitGroup
 
 	w := newWords()

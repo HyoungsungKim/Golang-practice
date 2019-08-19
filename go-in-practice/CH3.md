@@ -60,3 +60,90 @@ One simple way to avoid this situation is for each goroutine to place a “lock�
 ***Sometimes it’s useful to allow multiple read operations on a piece of data, but to allow only one write (and no reads) during a write operation.*** The `sync.RWLock` provides this functionality.
 
 ## 3.3 Working with Channels
+
+Channels provide a way to send messages from one goroutine to another. But unlike network connections, channels are typed and can send structured data. There’s generally no need to marshal data onto a channel.
+
+### Using multiple channels
+
+Sometimes the best way to solve concurrency problems in Go is to communicate more information. And that often translates into using more channels.
+
+Problem
+You want to use channels to send data from one goroutine to another, and be able to interrupt that process to exit.
+
+Solution
+Use `select` and multiple channels. It’s a common practice in Go to use channels to signal when something is done or ready to close.
+
+The `select` statement can watch multiple channels (zero or more). Until something happens, it’ll wait (or execute a `default` statement, if supplied). When a channel has an event, the `select` statement will execute that event.
+
+if no default is specified, `select` blocks until one of the case statements can send or receive.
+
+### Closing Channels
+
+What happens if you have a sender and receiver goroutine, and the sender finishes sending data? Are the receiver and channel automatically cleaned up? Nope. The memory manager will only clean up values that it can ensure won’t be used again, and in our example, an open channel and a goroutine can’t be safely cleaned.
+
+The question arises: ***how can you correctly and safely clean up when you’re using goroutines and channels?***
+
+Problem
+You don’t want leftover channels and goroutines to consume resources and cause leaky applications. You want to safely close channels and exit goroutines.
+
+Solution
+The straightforward answer to the question “How do I avoid leaking channels and goroutines?” is “Close your channels and return from your goroutines.” Although that answer is correct, it’s also incomplete.
+***Closing channels the wrong way will cause your program to panic or leak goroutines.*** The predominant method for avoiding unsafe channel closing is to use additional channels to notify goroutines when it’s safe to close a channel.
+
+- Improper way : sending on closed channel
+
+***Proper way***
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main() {
+	msg := make(chan string)
+	done := make(chan bool)
+	until := time.After(5 * time.Second)
+
+	go send(msg, done)
+
+	for {
+		select {
+		case m := <-msg:
+			fmt.Println(m)
+		case <-until:
+			done <- true
+			time.Sleep(500 * time.Millisecond)
+			return
+		}
+	}
+}
+
+func send(ch chan<- string, done <-chan bool) {
+	for {
+		select {
+		case <-done:
+			println("Done")
+			close(ch)
+			return
+		default:
+			ch <- "Hello"
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
+}
+```
+
+> send 함수에 채널 닫는 `select` 만듬
+
+### Locking with buffered channels
+
+You’ve looked at channels that contain one value at a time and are created like this: `make(chan TYPE)` . This is called an `unbuffered channel`.
+
+Problem
+In a particularly sensitive portion of code, ***you need to lock certain resources.*** Given the frequent use of channels in your code, you’d like to do this with channels instead of the `sync` package.
+
+Solution
+***Use a channel with a buffer size of 1,*** and share the channel among the goroutines you want to synchronize.
