@@ -250,5 +250,84 @@ func main() {
 
 ---
 
-## Empty interface and struct
+## Struct and Interface type
+
+[Effective go](https://golang.org/ref/spec#Struct_types)
+
+### Struct Type
+
+A struct is a sequence of named elements, called fields, each of which has a name and a type. ***Field names may be specified explicitly (IdentifierList) or implicitly (EmbeddedField).***
+
+A field or method `f` of an embedded field in a struct `x` is called *promoted* if `x.f` is a legal selector that denotes that field or method `f`.
+
+> Embedding에서 공부했었음
+
+### Interface Type
+
+An interface type specifies a method set called its *interface*. A variable of interface type can store a value of any type with a method set that is any superset of the interface. Such a type is said to *implement the interface*. The value of an uninitialized variable of interface type is `nil`.
+
+A type implements any interface comprising any subset of its methods and may therefore implement several distinct interfaces. For instance, all types implement the ***empty interface***:
+
+```go
+interface{}
+```
+
+An interface `T` may use a (possibly qualified) interface type name `E` in place of a method specification. This is called
+***embedding interface*** `E` in `T`; it adds all (exported and non-exported) methods of `E` to the interface `T`.
+
+```go
+type ReadWriter interface {
+    Read(b Buffer) bool
+    Write(b buffer) bool
+}
+
+type File interface {
+    ReadWriter	// same as adding the methods of ReadWriter
+    Locker		// same as adding the methods of Locker
+    Close()
+}
+
+type LockedFile interface {
+    Locker
+    File		// illegal : Lock, Unlock not unique
+    Lock()		// illegal : Lock, not unique
+}
+```
+
+### Empty struct
+
+[medium](https://medium.com/@l.peppoloni/how-to-improve-your-go-code-with-empty-structs-3bd0c66bc531)
+
+```go
+struct{}
+```
+
+The cool thing about an empty structure is that it occupies zero bytes of storage.
+
+- *What can I use an empty struct for, if it has no fields?*
+- Basically an empty struct can be used every time you are only interested in a property of a data structure rather than its value
+
+#### Semaphores and tokens
+
+Making semaphore
+
+```go
+sem := make(chan bool, numberOfSemaphores)
+sem <-true
+//or
+sem := make(chan int, numberOfSemaphores)
+sem <- 1
+```
+
+Using struct
+
+```go
+//Declare array of empty struct
+sem := make(chan struct{}, numberOfSemaphores)
+sem <- struct{}{}
+```
+
+>Semaphore에서는 signal을 보내는거지 channel 안의 내용은 중요하지 않음
+>
+>따라서 empty struct{}를 통해 효율적인(?) 프로그래밍 가능
 
