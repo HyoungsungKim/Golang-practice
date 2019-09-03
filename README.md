@@ -331,3 +331,34 @@ sem <- struct{}{}
 >
 >따라서 empty struct{}를 통해 효율적인(?) 프로그래밍 가능
 
+#### How to use struct{}{} as semaphore
+
+example)
+
+```go
+package main
+import (
+	"sync"
+    "runtime"
+)
+
+func main() {
+    var sem = make(chan struct{}, runtime.NumCPU())
+    var wg = sync.Waitgroup()
+    
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        sem <- struct{}{}
+        .
+        .
+        <-sem
+    }()
+    //If it is synchronized program
+    wg.Wait()
+}
+```
+
+> Meaning of struct{}{}
+>
+> Initialization of struct{}. Imagine int{}, just int is changed to struct{}
