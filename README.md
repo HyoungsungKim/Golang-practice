@@ -4,6 +4,16 @@ I go even if i cannot go
 
 but... hey my life, are you going well? T_T
 
+## Go byte converting
+
+When a decimal number is given
+
+1. convert a number to binary
+2. add the lowest 8 bit(1 byte)
+3. convert binary to byte
+
+[go playground](https://play.golang.org/p/J5MF970GKXB)
+
 ## Embedding
 
 Based on [Medium](https://travix.io/type-embedding-in-go-ba40dd4264df) &  [Effective Go](https://golang.org/doc/effective_go.html#embedding) 
@@ -347,9 +357,23 @@ func main() {
     var wg = sync.Waitgroup()
     
     wg.Add(1)
+    sem <- struct{}{}
     go func() {
-        defer wg.Done()
-        sem <- struct{}{}
+        defer wg.Done()        
+        .
+        .
+        <-sem
+    }()
+    
+    //or        
+    go func() {
+        defer wg.Done()        
+        select {
+            case sem <- struct{}{} :
+                .
+                .
+        	default :	
+        }
         .
         .
         <-sem
