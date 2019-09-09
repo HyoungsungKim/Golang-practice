@@ -141,3 +141,153 @@ onde.Do(decrement)
 
 ## Pool
 
+```go
+myPool := &sync.Pool{
+    New: func() interface{} {
+        fmt.Println("Hi!")
+        return struct {}{}
+    },
+}
+
+myPool.Get()				// Print Hi!
+instance := myPool.Get()	// print Hi!
+myPool.Put(instance)	
+myPool.Get()				// run someting inside in pool, don't run New func of myPool
+
+//output 
+//Hi!
+//Hi!
+```
+
+## Channels
+
+- Read only channel
+
+```go
+var dataStream <-chan interface{}
+dataStream := make(<-chan interface{})
+```
+
+- Send only channel
+
+```go
+var dataStream chan <- interface{}
+dataStream := make(chan<- interface{})
+```
+
+- These will use as function parameters
+
+```go
+// Right way
+func main() {
+	channel := make(chan string)
+	go func() { channel <- "Hello world!" }()
+	fmt.Println(<-channel)
+}
+// Wrong way
+func main() {
+    channel := make(chan string)
+    channel <- "Hello world!"
+    fmt.Println(<-channel)
+}
+// Deadlock
+// Channel sned to goroutin, but there is no goroutine
+// Therefore send is blocked
+```
+
+>***Closing a channel is also one of the ways you can signal multiple goroutines simultaneously.*** If you have n goroutines waiting on a single channel, instead of writing n times to the channel to unblock each goroutine, ***you can simply close the channel.***
+>
+>Since a closed channel can be read from an infinite number of times, it doesn't matter how many goroutines are waiting on it, and closing the channel is both cheaper and faster than performing n writes. Here's an example of unblocking multiple goroutines at once:
+
+```go
+begin := make(chan interface{})
+var wg sync.WaitGroup
+for i := 0; i < 5; i++ {
+    wg.Add(1)
+    go fun(i int) {
+        defer wg.Done()
+        // Wait until chanel is closed
+        <-begin
+        fmt.Printf("%v has begun\n", i)
+    }(i)
+}
+
+fmt.Println("unblocking goroutines...")
+close(begin)
+// Output print is started
+wg.Wait()
+```
+
+***There are 2 ways for waiting signal***
+
+- Using cond
+- Using channel
+
+### Buffered Channel
+
+```go
+func main() {
+	var wg sync.WaitGroup
+	ch := make(chan int, 0)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ch <- 1
+		ch <- 2
+		ch <- 3
+	}()
+	fmt.Println(<-ch)
+	fmt.Println(<-ch)
+	fmt.Println(<-ch)
+}
+// Output
+// 1
+// 2
+// 3
+```
+
+***When something is pushed in full channel, It is not abandoned, but waiting until channel get a space***
+
+- Goroutine with sending to goroutin is wait until buffered channel get a space
+
+compiler optimization
+
+```go
+func main() {
+	var wg sync.WaitGroup
+	ch := make(chan int, 2)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer close(ch)
+		ch <- 10
+		ch <- 20
+		ch <- 30
+		fmt.Println("Push is done!")
+	}()
+
+	fmt.Println(len(ch))		// Print 0
+
+	for val := range ch {
+		fmt.Println(len(ch))	// Print 2, 1, 0
+		fmt.Println(val)		// Print 10, 20, 30
+	}
+
+	fmt.Println(len(ch))		// Print 0
+}
+// Output
+0
+Push is done!
+2
+10
+1
+20
+0
+30
+0
+```
+
+- Little bit different with our expectation.
+  - Channel size is 2, however 3 integer were pushed to buffered
+
+### nil of Channel
