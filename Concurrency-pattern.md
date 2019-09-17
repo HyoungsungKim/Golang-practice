@@ -1,4 +1,6 @@
-# Go concurrency pattern
+Go concurrency pattern
+
+Based on Concurrency in go tools and techniques for developers
 
 ## The Difference Between Concurrency and Parallelism
 
@@ -222,6 +224,7 @@ wg.Wait()
 
 - Using cond
 - Using channel
+  - Channels are composable(구성할 수 있는). Therefore, It is preferable way to unblock multiple goroutines at the same time.
 
 ### Buffered Channel
 
@@ -248,7 +251,7 @@ func main() {
 
 ***When something is pushed in full channel, It is not abandoned, but waiting until channel get a space***
 
-- Goroutine with sending to goroutin is wait until buffered channel get a space
+- Goroutine with sending to goroutine is wait until buffered channel get a space
 
 compiler optimization
 
@@ -291,3 +294,190 @@ Push is done!
   - Channel size is 2, however 3 integer were pushed to buffered
 
 ### nil of Channel
+
+```go
+var dataStream chan interface{}
+<-dataStream
+// Deadlock!
+```
+
+- Reading from a nil channel will block(although not necessarily deadlock) a program.
+
+```go
+var dataStream chan interface{}
+dataStream <- struct{}{}
+// Deadlock!
+```
+
+- Write is deadlock too
+
+```go
+// Closing deadlock
+var dataStream chan interface{}
+close(dataStream)
+// Panic
+```
+
+### Channel ownership
+
+#### About closing channel...
+
+[Is it OK to leave a channel open?](https://stackoverflow.com/questions/8593645/is-it-ok-to-leave-a-channel-open)
+
+***It is important to clarify which goroutine owns a channel in order to reason about our programs logically.***
+
+- Unidirectional channel declarations are the tool that will allow us to distinguish between goroutines that own channels and those that only utilize them
+  - Channel owners have a write-access view into the channel ( chan or chan<- )
+  - And channel utilizers only have a read-only view into the channel ( <-chan ).
+  - Once we make this distinction between channel owners and nonchannel owners, the results from the preceding table follow naturally, and we can begin to assign responsibilities to goroutines that own channels and those that do not.
+
+> 채널 소유자 : 쓰기 가능
+>
+> 채널 사용자 : 쓰기 불가능, 읽기만 가능
+
+#### Channel owner
+
+1. Instantiate the channel.
+2. Perform writes, or pass ownership to another goroutine.
+   - It prevents deadlocking
+3. ***Close the channel.***
+   - It prevents risk of panicing by closing a nil channel
+   - It prevents risk of panicing by writing to a closed channel
+   - It prevents risk of panicing by closing a channel more than once
+4. Encapsulate the previous three things in this list and expose them via a reader channel.
+
+#### Channel utilizer(consumer)
+
+Two things have to worry
+
+- Knowing when a channel is closed
+- Responsibly handling blocking for any reason
+  - It is very hard to define. Because it depends on algorithms
+
+Example)
+
+```go
+chanOwner := func() <- chan int {
+    resultStream := make(chan int, 5)
+    go func() {
+        defer close(resultStream) 
+        for i := 0; i <= 5; i++ {
+            resultStream <- i
+        }
+    }()
+    return resultStream
+}
+
+resultStream := chanOwner()
+for result := range resultStream {
+    fmt.Printf("received : %d\n", result)
+}
+fmt.Println("Done receiving")
+```
+
+***Keep the scope of channel ownership small so that these things remain obvious***
+
+- If you have a channel as a member variable of a struct with numerous methods on it, it is going to quickly become unclear how the channel will behave
+
+### The select Statement
+
+The `select` statement is the glue that binds channels together
+
+- ***It is how we are able to compose channels together in a program to from larger abstractions.***
+- `select` statements can help safely bring channels together with concepts like cancellations, timeouts, waiting, and default values.
+
+Example)
+
+```go
+var c1, c2 <-chan interface{}
+var c3 <-chan intergace{}
+select {
+case <- c1:
+    // Do something
+case <- c2:
+    // Do somthing
+case c3 <- struct{}{}
+    // Do somthing
+}
+```
+
+- Instead, all channel reads and writes are considered simultaneously to see if any of them are ready:
+  - populated or closed channels in the case of reads, and channels that are not at capacity in the case of writes.
+  - ***If none of the channels are ready, the entire select statement blocks.***
+    - Then when one the channels is ready, that operation will proceed, and its corresponding statements will execute.
+
+```go
+start := time.Now()
+c := make(chan interface{})
+go func() {
+    time.Sleep(5*time.Second)
+    close(c)
+}()
+
+fmt.Println("Blocking on read...")
+select {
+case <-c:
+    fmt.Printf("Unblocked %v later.\n", time.Since(start))
+}
+```
+
+- Read multiple channels simultaneously
+
+```go
+c1 := make(chan interface{}); close(c1)
+c2 := make(chan interface{}); close(c2)
+
+var c1Count, c2Count int
+for i := 1000; i >= 0; i-- {
+    select {
+    // Check channel is closed or not
+    // If channel is closed, then choose one of <-c1 or <-c2
+    case <-c1:
+        c1Count++
+    case <-c2:
+        c2Count++
+    }
+}
+fmt.Printf("c1Count : %v, c2Count : %v", c1Count, c2Count)
+// c1Count : 528, c2Count : 472
+```
+
+It means that of your set of case statements, ***each has an equal chance of being selected as all the others***
+
+***What happens if there are never any channels that become ready?***
+
+- If there is nothing useful you can do when all the channels are blocked, but you also cannot block forever, you may want to time out.
+- Go's `time` package provides an elegant way to do this with channels that fits nice;y within the paradigm of `select` statements.
+
+```go
+var c <-chan int
+select {
+    case <-c:
+    case <-time.After(1*time.Second):
+    fmt.Println("Timed out.")
+}
+```
+
+***What happens when no channel is ready and we need to do something in the meantime?***
+
+- `select` statement also allows for a default clause in case you would like to do something if all the channels you are selecting against are blocking
+- This allows you to exit a select block without blocking.
+
+```go
+start := time.Now()
+var c1, c2 <-chan int
+select {
+case <- c1:
+case <- c2:
+default:
+    fmt.Printf("In default after %v\n\n", time.Since(start))
+}
+```
+
+Block forever
+
+```go
+select{}
+```
+
+## Concurrency Patterns in Go
