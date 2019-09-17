@@ -4,6 +4,12 @@ I go even if i cannot go
 
 but... hey my life, are you going well? T_T
 
+[How to use interfaces in Go](https://jordanorelli.com/post/32665860244/how-to-use-interfaces-in-go)
+
+[What's the meaning of interface{}?](https://stackoverflow.com/questions/23148812/whats-the-meaning-of-interface)
+
+[Any difference in using an empty interface or an empty struct as a map's value in golang](https://stackoverflow.com/questions/22770114/any-difference-in-using-an-empty-interface-or-an-empty-struct-as-a-maps-value-i)
+
 ## Go byte converting
 
 When a decimal number is given
@@ -386,3 +392,87 @@ func main() {
 > Meaning of struct{}{}
 >
 > Initialization of struct{}. Imagine int{}, just int is changed to struct{}
+
+### Empty Interface
+
+- Empty interface does not mean "Any type"
+
+#### Type assertions
+
+```go
+x.(T)
+```
+
+- If T is not an interface type, x.(T) asserts that the dynamic type of x is identical to the type T.
+  - In this case, T must implement the (interface) type of x;
+  - 만약 T가 empty interface라면 구현 할 필요 없음(예제 참고)
+    - i := x.(int)
+  - Otherwise the type assertion is invalid since it is not possible for x to store a value of type T.
+- If T is interface type, x.(T) asserts that the dynamic type of x implements the interface T.
+- If the type assertion holds, the value of the expression is the value stored in x and its type is T.
+  - If type assertion is false, a run-time panic occurs.
+
+```go
+var x interface{} = 7
+i := x.(int)
+// 	fmt.Println(x) : 7
+
+type I intergace{ m() }
+func f(y I) P
+    s := y.(string)
+    r := y.(io.Reader)
+    ...
+}
+```
+
+#### Type switch
+
+```go
+type Stringer interface {
+    String() string
+}
+
+var value interface{} 
+switch str := value.(type) {
+    case string:
+  		return str
+    case Stringer
+   		return srt.String()
+}
+```
+
+#### Empty interface as function parameters
+
+```go
+type Dog struct {
+    Age interface{}
+}
+
+func Eat(t interface{}) {
+    // ...
+}
+```
+
+- Accepting interface{} does not mean the function accepts any type
+  - But rather means that Eat accepts a value of `interface{}` type
+- At runtime, Go will convert the actual value passed to an `interface{}` value.
+  - If you define a field in a ***struct with type `interface{}`***, you can ***assign it a value of any type.***
+
+```go
+type Dog struct {
+    Age interface{}
+}
+
+func main() {
+    dog := Dog{}
+    // Possible
+    dog.Age = "3"	
+    // Possible
+    dog.Age = 3
+    // Possible
+    dog.Age = "Three"
+}
+```
+
+
+
