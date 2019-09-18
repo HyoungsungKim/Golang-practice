@@ -360,7 +360,7 @@ import (
 
 func main() {
     var sem = make(chan struct{}, runtime.NumCPU())
-    var wg = sync.Waitgroup()
+    var wg sync.Waitgroup()
     
     wg.Add(1)
     sem <- struct{}{}
